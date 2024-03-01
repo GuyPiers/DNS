@@ -1,0 +1,63 @@
+import socket
+import struct
+
+def parse_dns_query(data):
+    try:
+        domain_parts = []
+        i = 12
+        while True:
+            length = data[i]
+            if length == 0:
+                break
+            domain_parts.append(data[i+1:i+1+length].decode('utf-8'))
+            i += length + 1
+        domain = '.'.join(domain_parts)
+        return domain
+    except:
+        return None
+
+def build_dns_response(ip):
+    try:
+        response = bytearray()
+        response.extend(b'\x00\x00')
+        response.extend(b'\x81\x80')
+        response.extend(b'\x00\x01')
+        response.extend(b'\x00\x01')
+        response.extend(b'\x00\x00')
+        response.extend(b'\x00\x00')
+        response.extend(b'\x03www\x06example\x03com\x00')
+        response.extend(b'\x00\x01')
+        response.extend(b'\x00\x01')
+        response.extend(b'\x00\x00\x00\x3c')
+        response.extend(b'\x00\x04')
+        response.extend(socket.inet_aton(ip))
+        return response
+    except:
+        return None
+
+def main():
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    server_socket.bind(('127.0.0.1', 53))
+    print('DNS server started...')
+
+    while True:
+        try:
+            data, address = server_socket.recvfrom(1024)
+            domain = parse_dns_query(data)
+            print('Received DNS query for domain:', domain)
+
+            ip = '127.0.0.1'
+
+            response = build_dns_response(ip)
+            if response:
+                server_socket.sendto(response, address)
+                print('Sent DNS response with IP:', ip)
+        except KeyboardInterrupt:
+            break
+        except Exception as e:
+            print('Error:', e)
+
+    server_socket.close()
+
+if __name__ == '__main__':
+    main()
